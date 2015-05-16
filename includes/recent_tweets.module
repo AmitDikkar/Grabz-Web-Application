@@ -1,0 +1,142 @@
+<?php
+/**
+ * @file
+ * Adds a block that follows a user or hashtag on Twitter with optional jQuery animation
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function recent_tweets_menu() {
+	$items = array();
+	$items['admin/config/content/recent-tweets'] = array(
+		'title' => 'Recent Tweets Block Settings',
+		'description' => 'This module adds a block that follows a user or hashtag on Twitter with optional jQuery animation. To prevent a new Twitter request with each page load, this module creates an internal cache with JSON data that can be refreshed at a given hourly frequency.',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('recent_tweets_form'),
+		'access arguments' => array('access administration pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	return $items;
+}
+
+/**
+ * Page callback: Recent Tweets Block Settings
+ *
+ * @see recent_tweets_menu()
+ */
+function recent_tweets_form($form, &$form_state) {
+	$form['recent_tweets_max'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Number of Tweets'),
+		'#description' => t('How many tweets should we grab?'),
+		'#default_value' => variable_get('recent_tweets_max', 20),
+		'#required' => TRUE,
+		'#size' => 2,
+		'#maxlength' => 2,
+	);
+	$form['recent_tweets_type'] = array(
+		'#type' => 'select',
+		'#title' => t('Follow Type'),
+		'#description' => t('Hashtag or user?'),
+		'#default_value' => variable_get('recent_tweets_type', 'hashtag'),
+		'#options' => array('hashtag' => t('Hashtag'), 'user' => t('User')),
+	);
+	$form['recent_tweets_follow'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Following'),
+		'#description' => t('Enter the hashtag or user to follow. Do not use a "#" or "@" symbol.'),
+		'#default_value' => variable_get('recent_tweets_follow', '#yolo'),
+		'#required' => TRUE,
+	);
+	$form['recent_tweets_refresh'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Tweet Cache Refresh Rate'),
+		'#description' => t('How many hours should go by before we refresh the tweet cache? (Should not be more than a day.)'),
+		'#default_value' => variable_get('recent_tweets_refresh', 1),
+		'#required' => TRUE,
+		'#size' => 2,
+		'#maxlength' => 2,
+	);
+	$form['recent_tweets_animation'] = array(
+		'#type' => 'checkbox',
+		'#title' => t('jQuery Animation'),
+		'#description' => t('Animates the tweet list with jQuery.'),
+		'#default_value' => variable_get('recent_tweets_animation', TRUE),
+	);
+	return system_settings_form($form);
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function recent_tweets_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'recent_tweets_form') {
+    $form['#submit'][] = 'recent_tweets_submit';
+  }
+}
+/**
+ * Additional handler for recent_tweets form submit.
+ */
+function recent_tweets_submit($form, &$form_state) {
+		$filepath = drupal_get_path('module', 'recent_tweets');
+		$datefile=fopen($filepath.'/tweets-date.txt', 'w');
+		fwrite($datefile, utf8_encode(""));
+		fclose($datefile);
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function recent_tweets_block_info() {
+	$blocks = array();
+	$blocks['tweet_list'] = array(
+		'info' => t('Recent Tweets'),
+		'cache' => DRUPAL_NO_CACHE,
+	);
+	return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function recent_tweets_block_view($block_name = 'tweet_list') {
+	if ($block_name == 'tweet_list') {
+		
+		$content = "<div id=\"jstwitter\"></div>";
+		$block = array(
+			'subject' => t('Recent Tweets'),
+			'content' => $content,
+		);
+		return $block;
+	}
+}
+function recent_tweets_init() {
+$filepath = drupal_get_path('module', 'recent_tweets');
+$recentTweetsMax = variable_get('recent_tweets_max','');
+$recentTweetsType = variable_get('recent_tweets_type','');
+$recentTweetsFollow = variable_get('recent_tweets_follow','');
+$recentTweetsRefresh = variable_get('recent_tweets_refresh','');
+$recentTweetsAnimation = variable_get('recent_tweets_animation','');
+$settings = array(
+	'recent_tweets' => array(
+		'recentTweetsMax' => $recentTweetsMax,
+		'recentTweetsType' => $recentTweetsType,
+		'recentTweetsFollow' => $recentTweetsFollow,
+		'recentTweetsRefresh' => $recentTweetsRefresh,
+		'recentTweetsAnimation' => $recentTweetsAnimation,
+		'recentTweetsLocation' => $filepath,
+	),
+);
+$options = array(
+	'group' => JS_LIBRARY,
+	'cache' => FALSE,
+	'preprocess' => FALSE,
+	'defer' => TRUE,
+);
+
+
+drupal_add_js($settings, 'setting');
+drupal_add_js($filepath.'/recent_tweets.js', $options);
+}
+

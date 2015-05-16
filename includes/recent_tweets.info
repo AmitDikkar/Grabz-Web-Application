@@ -1,0 +1,4 @@
+name = Recent Tweets Block
+description = Adds a block that follows a user or hashtag on Twitter with optional jQuery animation
+core = 7.x
+configure = admin/config/content/recent-tweets
